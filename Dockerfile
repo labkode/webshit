@@ -14,7 +14,10 @@ RUN yum -y install epel-release
 RUN yum -y install \
 	httpd \
 	mod_ssl \
-	supervisor
+	supervisor\
+	vim \
+	less \
+	sssd
 
 # ----- Install shibboleth ----- #
 RUN yum -y install \
@@ -26,8 +29,29 @@ RUN yum -y install \
 		libxmltooling-devel \
 		libsaml-devel
 
+RUN yum -y install \ 	php \ 	rh-php71*
+RUN ln -s /opt/rh/httpd24/root/etc/httpd/modules/librh-php71-php7.so /etc/httpd/modules/libphp7.so
+ADD 10-php.conf /etc/httpd/conf.modules.d/10-php.conf
+
+RUN yum -y install \
+         nscd \ 
+         nss-pam-ldapd \
+         openldap-clients
+
 # Fix the library path for shibboleth (https://wiki.shibboleth.net/confluence/display/SHIB2/NativeSPLinuxRH6)
 ENV LD_LIBRARY_PATH=/opt/shibboleth/lib64
+
+RUN sed -i 's|DocumentRoot "/var/www/html"|DocumentRoot "/var/www/html/cernbox"|g' /etc/httpd/conf/httpd.conf
+
+# Change apache config
+ADD shib.conf /etc/httpd/conf.d/
+ADD ssl.conf /etc/httpd/conf.d/
+ADD httpd.conf /etc/httpd/conf/
+ADD ns*.conf /etc/
+ADD sssd.conf /etc/sssd/
+
+ADD ./supervisord.d/sssd_foreground.sh /usr/sbin/sssd_foreground.sh 
+RUN chmod +x /usr/sbin/sssd_foreground.sh
 
 # Copy Supervisor ini files
 ADD ./supervisord.d/supervisord.conf /etc/supervisord.conf
